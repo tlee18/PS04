@@ -1,6 +1,6 @@
 ---
 title: "STAT/MATH 495: Problem Set 04"
-author: "WRITE YOUR NAME HERE"
+author: "Tim Lee"
 date: "2017-10-03"
 output:
   html_document:
@@ -9,21 +9,23 @@ output:
     toc_depth: 2
     collapsed: false
     smooth_scroll: false
+    df_print: kable
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, fig.width=8, fig.height=4.5, message=FALSE)
-set.seed(76)
+
 ```
 
 # Collaboration
 
-Please indicate who you collaborated with on this assignment:
+Please indicate who you collaborated with on this assignment: Pei Gong, Vickie Ip, Leonard Yoon
 
 
 # Load packages, data, model formulas
+The credit data can be found on the following website: "http://www-bcf.usc.edu/~gareth/ISL/Credit.csv". The CSV file was imported into RStudio and trained on multiple different model sizes.
 
-```{r, warning=FALSE}
+```{r, warning=FALSE, echo = FALSE}
 library(tidyverse)
 credit <- read_csv("http://www-bcf.usc.edu/~gareth/ISL/Credit.csv") %>%
   select(-X1) %>%
@@ -31,7 +33,7 @@ credit <- read_csv("http://www-bcf.usc.edu/~gareth/ISL/Credit.csv") %>%
   select(ID, Balance, Income, Limit, Rating, Age, Cards, Education)
 ```
 
-You will train the following 7 models on `credit_train`...
+I trained the following 7 models on `credit_train`...
 
 ```{r}
 model1_formula <- as.formula("Balance ~ 1")
@@ -45,8 +47,11 @@ model7_formula <- as.formula("Balance ~ Income + Limit + Rating + Age + Cards + 
 
 ... where `credit_train` is defined below, along with `credit_test`.
 
+
+The data are then divided into a training set of size 20 and a test set of size 380. 
+
 ```{r}
-set.seed(79)
+set.seed(7900)
 credit_train <- credit %>% 
   sample_n(20)
 credit_test <- credit %>% 
@@ -56,14 +61,103 @@ credit_test <- credit %>%
 
 # RMSE vs number of coefficients
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
+### Calculating the RMSE for all Models
+```{r, echo =TRUE}
 # Placeholder vectors of length 7. For now, I've filled them with arbitrary 
-# values; you will fill these in
+# values.
 RMSE_train <- runif(n=7)
 RMSE_test <- runif(n=7)
 
+# RMSE for each value
+for(i in 1:7){
+  model_lm <- lm(get(paste0("model", i, "_formula")), data = credit_train)
+  y_hat_test <- predict(model_lm, newdata = credit_test)
+  y_hat_train <- predict(model_lm, newdata = credit_train)
+  
+  error_test <- credit_test[["Balance"]] - y_hat_test
+  rmse_test <- sqrt(mean(error_test^2))
+  
+  error_train <- credit_train[["Balance"]] - y_hat_train
+  rmse_train <- sqrt(mean(error_train^2))
 
-# Do your work here:
+  
+  RMSE_test[i] <- rmse_test
+  RMSE_train[i] <- rmse_train
+}
+
+```
+
+```{r, echo = FALSE}
+
+# Save results in a data frame. Note this data frame is in wide format.
+results <- data_frame(
+  num_coefficients = 1:7,
+  RMSE_train,
+  RMSE_test
+) 
+
+# Some cleaning of results
+results <- results %>% 
+  # More intuitive names:
+  rename(
+    `Training data (n=20)` = RMSE_train,
+    `Test data (n=380)` = RMSE_test
+  ) %>% 
+  # Convert results data frame to "tidy" data format i.e. long format, so that we
+  # can ggplot it
+  gather(type, RMSE, -num_coefficients)
+
+plot1 <- ggplot(results, aes(x=num_coefficients, y=RMSE, col=type)) +
+  geom_line() + 
+  labs(title = "RMSE as a function of the # of Coefficients", x="# of coefficients", y="RMSE", col="Data used to evaluate \nperformance of fitted model")
+plot1
+```
+
+
+## Interpret the graph
+
+Compare and contrast the two curves and hypothesize as to the root cause of any differences.
+
+### Similarities
+* Difference in RMSE from 2 to 3 coefficients: The curves both show dramatic increases in out-of-sample validity when the number of coefficients goes from 2 to 3. This occurs because the amount of information in the third variable of `Limit` is important for making predictions. That variable explains more of the variation in the data points than other variables.
+
+
+### Differences
+* As the number of coefficients increases past 3, the difference between the test data and the training data RMSE gets wider. The root cause of this is the fact that the training data is so small that it has less ability to separate the signal from the noise in the model. Thus, when there are more predictors, it is more difficult to partition given that there are only 20 observations to make out-of-sample predictios in the test set. For the training data, it can make better predictions on itself because it is not out-of-sample, which isn't truly evaluating the effectiveness of a model.
+
+
+* RMSE differences between test and training data: The test data generally has higher RMSE than the training data. The root cause of this is the fact that the training data only has 20 entries. It may not have enough power to produce a signal that is strong enough to capture the true model. Thus, the model from the training data produces an RMSE that is good for itself, but it cannot make some predictions for the test data.
+
+# Bonus
+
+Repeat the whole process, but let `credit_train` be a random sample of size 380
+from `credit` instead of 20. Now compare and contrast this graph with the
+one above and hypothesize as to the root cause of any differences.
+
+```{r, echo=TRUE}
+credit_train <- credit %>% 
+  sample_n(380)
+credit_test <- credit %>% 
+  anti_join(credit_train, by="ID")
+```
+
+
+```{r, echo = FALSE}
+for(i in 1:7){
+  model_lm <- lm(get(paste0("model", i, "_formula")), data = credit_train)
+  y_hat_test <- predict(model_lm, newdata = credit_test)
+  y_hat_train <- predict(model_lm, newdata = credit_train)
+  
+  error_test <- credit_test[["Balance"]] - y_hat_test
+  rmse_test <- sqrt(mean(error_test^2))
+  
+  error_train <- credit_train[["Balance"]] - y_hat_train
+  rmse_train <- sqrt(mean(error_train^2))
+
+  
+  RMSE_test[i] <- rmse_test
+  RMSE_train[i] <- rmse_train
+}
 
 
 # Save results in a data frame. Note this data frame is in wide format.
@@ -77,31 +171,42 @@ results <- data_frame(
 results <- results %>% 
   # More intuitive names:
   rename(
-    `Training data` = RMSE_train,
-    `Test data` = RMSE_test
+    `Training data (n=380)` = RMSE_train,
+    `Test data (n=20)` = RMSE_test
   ) %>% 
   # Convert results data frame to "tidy" data format i.e. long format, so that we
   # can ggplot it
   gather(type, RMSE, -num_coefficients)
 
-ggplot(results, aes(x=num_coefficients, y=RMSE, col=type)) +
+plot2 <- ggplot(results, aes(x=num_coefficients, y=RMSE, col=type)) +
   geom_line() + 
-  labs(x="# of coefficients", y="RMSE", col="Data used to evaluate \nperformance of fitted model")
+  labs(title = "RMSE as a function of the # of Coefficients", x="# of coefficients", y="RMSE", col="Data used to evaluate \nperformance of fitted model")
+plot2
 ```
 
 
-# Interpret the graph
+## Comparing the Graphs
 
-Compare and contrast the two curves and hypothesize as to the root cause of any differences.
+For ease of comparison, the graphs have been reprinted next to each other. Furthermore, the axes have been changed to reflect the same maximum and minimum limits for the axes. 
+```{r, echo = FALSE}
+library(gridExtra)
+gridExtra::grid.arrange(plot1 + coord_cartesian(ylim = c(50, 600)) + labs(title = "Original Graph"), plot2 + coord_cartesian(ylim = c(50, 600)) + labs(title = "Bonus Graph"), nrow=2)
 
-
-
-# Bonus
-
-Repeat the whole process, but let `credit_train` be a random sample of size 380
-from `credit` instead of 20. Now compare and contrast this graph with the
-one above and hypothesize as to the root cause of any differences.
-
-```{r, echo=FALSE}
 
 ```
+
+
+
+### Similiarities
+
+* Number of coefficients for the drop in the RMSE: There is a drop in RMSE at 3 coefficients on the graph. The root cause of this is the 3rd coefficient in the model (`Limit`) has a lot of information. It is the biggest determinant of Balance. 
+
+* After there are 3 coefficients, the test data tends to do worse than the training data in RMSE. The root cause of this is that the primary information is added in the 3rd coefficient of the model (`Limit`), which settles the dust and gives a better estimate. The training RMSE is smaller than the test MSE, because models work better on data that were developed for it (more so than new data).
+
+### Differences
+
+* The amount of starting variation influences the starting RMSE. However, the root cause of this is just the initial seed that is set. There is very little information when there is only one coefficient, where differences could be due to the random sample.
+
+* After 3 coefficients, the original and bonus graph differ in the amount of divergence between the test and training data in RMSE. The original graph has the difference getting bigger, while the bonus graph has the difference leveling out. This is due to the power of the training data and actually having a large enough sample size to determine what variables are important or not. After `Limit`, it doesn't seem like there are strong influences on the out-of-sample validity. 
+
+* There is generally higher RMSE in the bonus graph compared to the original graph. The root cause of this is that the larger training data makes it less flexible for predicting the test data. Thus, it is more stable in its predictions but is less flexible. However, this may not be important if the goal of the model is simply to identify the variable that is the biggest predictor; then, the 3rd coefficient in the model (`Limit`) would have been identified in either case.
