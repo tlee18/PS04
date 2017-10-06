@@ -51,7 +51,7 @@ model7_formula <- as.formula("Balance ~ Income + Limit + Rating + Age + Cards + 
 The data are then divided into a training set of size 20 and a test set of size 380. 
 
 ```{r}
-set.seed(7900)
+set.seed(79)
 credit_train <- credit %>% 
   sample_n(20)
 credit_test <- credit %>% 
@@ -123,10 +123,10 @@ Compare and contrast the two curves and hypothesize as to the root cause of any 
 
 
 ### Differences
-* As the number of coefficients increases past 3, the difference between the test data and the training data RMSE gets wider. The root cause of this is the fact that the training data is so small that it has less ability to separate the signal from the noise in the model. Thus, when there are more predictors, it is more difficult to partition given that there are only 20 observations to make out-of-sample predictios in the test set. For the training data, it can make better predictions on itself because it is not out-of-sample, which isn't truly evaluating the effectiveness of a model.
+* As the number of coefficients increases past 3, the difference between the test data and the training data RMSE gets wider. The root cause of this is the fact that the training data is so small that it has less ability to separate the signal from the noise in the model. Thus, when there are more predictors, it is more difficult to partition given that there are only 20 observations to make out-of-sample predictios in the test set. For the training data, it can make better predictions on itself because it is not out-of-sample, which isn't truly evaluating the effectiveness of a model. With 20 values in the training data, its RMSE goes down because it is becoming idiosyncratic to the model but it isn't actually representative of the ability to predict data outside the sample.
 
 
-* RMSE differences between test and training data: The test data generally has higher RMSE than the training data. The root cause of this is the fact that the training data only has 20 entries. It may not have enough power to produce a signal that is strong enough to capture the true model. Thus, the model from the training data produces an RMSE that is good for itself, but it cannot make some predictions for the test data.
+* RMSE differences between test and training data: The test data generally has higher RMSE than the training data. The root cause of this is the fact that the training data only has 20 entries. It may not have enough power to produce a signal that is strong enough to capture the true model. Thus, the model from the training data produces an RMSE that is good for itself, but it cannot make some predictions for the test data. We can see the general area of where we're overfitting!
 
 # Bonus
 
@@ -203,10 +203,10 @@ gridExtra::grid.arrange(plot1 + coord_cartesian(ylim = c(50, 600)) + labs(title 
 
 * After there are 3 coefficients, the test data tends to do worse than the training data in RMSE. The root cause of this is that the primary information is added in the 3rd coefficient of the model (`Limit`), which settles the dust and gives a better estimate. The training RMSE is smaller than the test MSE, because models work better on data that were developed for it (more so than new data).
 
+* Even though there are differences in the RMSE's for the original and bonus graphs, they both show the relative importance of the 3rd input into the model. They differences may be insignificant if the goal of the model is simply to identify the variable that is the biggest predictor; then, the 3rd coefficient in the model (`Limit`) would have been identified in either case.
+
 ### Differences
 
-* The amount of starting variation influences the starting RMSE. However, the root cause of this is just the initial seed that is set. There is very little information when there is only one coefficient, where differences could be due to the random sample.
+* The amount of starting variation is influenced by the starting RMSE. However, the root cause of this is just the initial seed that is set. There is very little information when there is only one coefficient, where differences could be due to the random sample.
 
-* After 3 coefficients, the original and bonus graph differ in the amount of divergence between the test and training data in RMSE. The original graph has the difference getting bigger, while the bonus graph has the difference leveling out. This is due to the power of the training data and actually having a large enough sample size to determine what variables are important or not. After `Limit`, it doesn't seem like there are strong influences on the out-of-sample validity. 
-
-* There is generally higher RMSE in the bonus graph compared to the original graph. The root cause of this is that the larger training data makes it less flexible for predicting the test data. Thus, it is more stable in its predictions but is less flexible. However, this may not be important if the goal of the model is simply to identify the variable that is the biggest predictor; then, the 3rd coefficient in the model (`Limit`) would have been identified in either case.
+* After 3 coefficients, the original and bonus graph differ in the amount of divergence between the test and training data in RMSE. The original graph has the difference getting bigger, while the bonus graph has the difference leveling out. This is due to overfitting. With 20 data points in the training data of the original graph, adding more coefficients quickly leads to overfitting. However, with the 380 data points in the training data of the bonus graph, the model takes longer to overfit.  
